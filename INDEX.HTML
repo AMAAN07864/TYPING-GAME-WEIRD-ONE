@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TYPING GAME WEIRD ONE - Robot Car Typing Race</title>
+    <meta name="description" content="Play Typing Game Weird One: Race robot cars by typing weird facts! Free online game.">
+    <meta name="keywords" content="typing game weird one, weird typing game, robot car typing">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #0ff; font-family: 'Roboto Mono', monospace;
+            height: 100vh; display: flex; flex-direction: column;
+            align-items: center; padding: 10px; overflow: hidden; text-align: center;
+        }
+        h1 { font-family: 'Orbitron'; font-size: 2.2rem; color: #0f8; text-shadow: 0 0 20px #0ff; }
+        .tagline { font-size: 1rem; color: #0f0; margin: 10px 0; }
+
+        .controls { display: flex; gap: 15px; margin: 15px 0; flex-wrap: wrap; justify-content: center; }
+        select, button {
+            padding: 10px; background: #000; color: #0f0; border: 2px solid #0f8;
+            border-radius: 10px; cursor: pointer; font-size: 1rem;
+        }
+        button:hover { background: #0f0; color: #000; }
+
+        .track { width: 100%; max-width: 900px; height: 150px; background: #111;
+            border: 3px solid #0f8; border-radius: 15px; position: relative; overflow: hidden; margin: 15px 0; }
+        .road-line { position: absolute; width: 100%; height: 5px; top: 50%;
+            background: repeating-linear-gradient(90deg, #fff 0, #fff 25px, transparent 25px, transparent 50px);
+            animation: move 0.7s linear infinite; }
+        @keyframes move { 0% { transform: translateX(0); } 100% { transform: translateX(-50px); } }
+        .finish-line { position: absolute; right: 10px; top: 0; width: 16px; height: 100%;
+            background: repeating-linear-gradient(0deg, #f00, #f00 10px, #fff 10px, #fff 20px); }
+
+        .car { position: absolute; width: 80px; height: 50px; bottom: 15px; }
+        .car-body { width: 100%; height: 35px; background: linear-gradient(45deg, #f0f, #0ff);
+            border-radius: 15px 15px 8px 8px; position: relative; }
+        .robot-head { width: 40px; height: 40px; background: #0f0; position: absolute; top: -25px; left: 20px;
+            border-radius: 50% 50% 12px 12px; border: 3px solid #0f8; }
+        .robot-head::before, .robot-head::after { content: ''; position: absolute; width: 12px; height: 12px;
+            background: #f00; border-radius: 50%; top: 9px; }
+        .robot-head::before { left: 7px; } .robot-head::after { right: 7px; }
+        .wheel { position: absolute; width: 22px; height: 22px; background: #222; border-radius: 50%;
+            border: 3px solid #fff; bottom: -12px; }
+        .wheel.left { left: 10px; } .wheel.right { right: 10px; }
+
+        #playerCar { left: 20px; }
+        #aiCar { left: 20px; top: 70px; }
+        #aiCar .car-body { background: linear-gradient(45deg, #ff0, #f80); }
+
+        .fact-box { width: 100%; max-width: 900px; background: rgba(0,0,0,0.8); padding: 18px;
+            border: 3px solid #0f8; border-radius: 12px; margin: 15px 0; font-size: 1.25rem;
+            text-align: center; max-height: 100px; overflow: auto; }
+        .correct { color: #0f0; } .wrong { color: #f00; text-decoration: underline wavy; }
+
+        input { width: 100%; max-width: 900px; padding: 16px; font-size: 1.4rem;
+            background: #000; color: #0ff; border: 3px solid #0f8; border-radius: 12px;
+            text-align: center; margin: 10px 0; }
+        input:focus { border-color: #0ff; }
+
+        .stats { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin: 10px 0; }
+        .stat { background: rgba(0,255,0,0.2); padding: 10px 16px; border-radius: 10px; border: 1px solid #0f0; }
+    </style>
+</head>
+<body>
+
+    <h1>TYPING GAME WEIRD ONE</h1>
+    <p class="tagline">Race robot cars by typing weird facts!</p>
+
+    <div class="controls">
+        <select id="textLength">
+            <option value="17">17 Words (Easy)</option>
+            <option value="30" selected>30 Words (Hard)</option>
+        </select>
+        <select id="aiSpeed">
+            <option value="70" selected>70 WPM (Pro)</option>
+        </select>
+        <button onclick="restart()">New Race</button>
+    </div>
+
+    <div class="track" id="track">
+        <div class="road-line"></div>
+        <div class="finish-line"></div>
+        <div class="car" id="playerCar">
+            <div class="car-body"></div>
+            <div class="robot-head"></div>
+            <div class="wheel left"></div>
+            <div class="wheel right"></div>
+        </div>
+        <div class="car" id="aiCar">
+            <div class="car-body"></div>
+            <div class="robot-head"></div>
+            <div class="wheel left"></div>
+            <div class="wheel right"></div>
+        </div>
+    </div>
+
+    <div class="fact-box" id="factDisplay">Loading...</div>
+    <input type="text" id="inputField" placeholder="Wait for GO!..." disabled>
+
+    <div class="stats">
+        <div class="stat">WPM: <span id="wpm">0</span></div>
+        <div class="stat">Accuracy: <span id="accuracy">100%</span></div>
+    </div>
+
+    <script>
+        const texts = {
+            17: "Octopuses have three hearts. Crows recognize faces. Dolphins name each other.",
+            30: "The human brain has 86 billion neurons. Octopuses edit RNA. Crows use tools. Dolphins whistle names."
+        };
+
+        let currentText = "", typed = "", startTime = null, raceStarted = false;
+        let totalChars = 0, correctChars = 0;
+
+        const factDisplay = document.getElementById('factDisplay');
+        const inputField = document.getElementById('inputField');
+        const playerCar = document.getElementById('playerCar');
+        const aiCar = document.getElementById('aiCar');
+        const wpmSpan = document.getElementById('wpm');
+        const accuracySpan = document.getElementById('accuracy');
+        const textLengthSelect = document.getElementById('textLength');
+        const track = document.getElementById('track');
+
+        const trackWidth = () => track.offsetWidth - 100;
+
+        function renderText() {
+            let html = '', i = 0;
+            for (let c of currentText) {
+                if (typed[i] === undefined) html += c;
+                else if (typed[i] === c) html += `<span class="correct">${c}</span>`;
+                else html += `<span class="wrong">${c}</span>`;
+                i++;
+            }
+            factDisplay.innerHTML = html;
+        }
+
+        function startCountdown() {
+            inputField.disabled = true; let c = 3;
+            factDisplay.innerHTML = c; 
+            const int = setInterval(() => {
+                c--;
+                if (c > 0) factDisplay.innerHTML = c;
+                else if (c === 0) factDisplay.innerHTML = "<span style='color:#0f0'>GO!</span>";
+                else { clearInterval(int); startRace(); }
+            }, 1000);
+        }
+
+        function startRace() {
+            currentText = texts[textLengthSelect.value];
+            typed = ""; startTime = Date.now(); raceStarted = true;
+            inputField.disabled = false; inputField.placeholder = "Type now!"; inputField.focus();
+            renderText(); startAITyping(); updateStats();
+        }
+
+        function updateCar() {
+            const prog = typed.length / currentText.length;
+            playerCar.style.left = Math.min(prog * trackWidth() + 20, trackWidth() + 20) + 'px';
+            if (typed === currentText) endRace("YOU WIN!");
+        }
+
+        function startAITyping() {
+            let wi = 0;
+            const totalWords = currentText.split(' ').length;
+            const interval = setInterval(() => {
+                wi++;
+                const p = wi / totalWords;
+                aiCar.style.left = Math.min(p * trackWidth() + 20, trackWidth() + 20) + 'px';
+                if (wi >= totalWords) { clearInterval(interval); if (typed !== currentText) endRace("AI WINS!"); }
+            }, 60000 / 70);
+        }
+
+        function updateStats() {
+            setInterval(() => {
+                if (!raceStarted) return;
+                const elapsed = (Date.now() - startTime) / 60000;
+                const words = typed.trim().split(' ').length;
+                const wpm = elapsed > 0 ? Math.round(words / elapsed) : 0;
+                const acc = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+                wpmSpan.textContent = wpm; accuracySpan.textContent = acc + '%';
+            }, 200);
+        }
+
+        function endRace(msg) {
+            raceStarted = false;
+            inputField.disabled = true;
+            factDisplay.innerHTML = `<h2 style="color:#ff0; text-shadow:0 0 20px #ff0;">${msg}</h2>`;
+        }
+
+        inputField.addEventListener('input', () => {
+            if (!raceStarted) return;
+            typed = inputField.value; totalChars = typed.length; correctChars = 0;
+            renderText(); updateCar();
+        });
+
+        function restart() { playerCar.style.left = '20px'; aiCar.style.left = '20px'; startCountdown(); }
+        restart();
+    </script>
+</body>
+</html>
